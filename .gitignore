@@ -1,15 +1,25 @@
-[Ll]ibrary/
-[Tt]emp/
-[Oo]bj/
-[Bb]uild/
-[Bb]uilds/
-[Ll]ogs/
-[Uu]ser[Ss]ettings/
-[Mm]emoryCaptures/
+/[Ll]ibrary/
+/[Tt]emp/
+/[Oo]bj/
+/[Bb]uild/
+/[Bb]uilds/
+/[Ll]ogs/
+/[Uu]ser[Ss]ettings/
 
+# Memory captures
+/[Mm]emoryCaptures/
+
+# Asset meta data should only be ignored when the corresponding asset is ignored
+!/[Aa]ssets/**/*.meta
+
+# Uncomment this line if you wish to ignore the asset store tools plugin
+# /[Aa]ssets/AssetStoreTools*
+
+# Visual Studio / JetBrains
 .vs/
 .idea/
-
+.gradle/
+.consulo/
 *.csproj
 *.unityproj
 *.sln
@@ -24,6 +34,14 @@
 *.mdb
 *.opendb
 *.VC.db
+*.sln.iml
 
+# Unity Collaborate
+.collab/
+
+# Crash reports
+sysinfo.txt
+
+# OS generated
 .DS_Store
 Thumbs.db
