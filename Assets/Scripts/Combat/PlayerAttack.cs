@@ -2,17 +2,27 @@ using UnityEngine;
 
 public class PlayerAttack : MonoBehaviour
 {
+    [Header("Normal Attack")]
+    [SerializeField] private int normalAttackDamage = 1;
+    [SerializeField] private float normalAttackRange = 0.6f;
+    [SerializeField] private float normalAttackCooldown = 0.35f;
+
+    [Header("Light Attack")]
+    [SerializeField] private int lightAttackDamage = 3;
+    [SerializeField] private float lightAttackRange = 0.8f;
+    [SerializeField] private float lightAttackCooldown = 0.6f;
+    [SerializeField] private float lightAttackCost = 20f;
+
     [Header("Attack Settings")]
-    [SerializeField] private int attackDamage = 1;
-    [SerializeField] private float attackRange = 0.6f;
-    [SerializeField] private float attackCooldown = 0.4f;
     [SerializeField] private LayerMask enemyLayer;
     [SerializeField] private Transform attackPoint;
 
     private float attackCooldownTimer;
+
     private Animator animator;
     private PlayerHealth playerHealth;
     private PlayerMovement playerMovement;
+    private PlayerLight playerLight;
 
     public bool IsAttacking { get; private set; }
 
@@ -21,6 +31,7 @@ public class PlayerAttack : MonoBehaviour
         animator = GetComponent<Animator>();
         playerHealth = GetComponent<PlayerHealth>();
         playerMovement = GetComponent<PlayerMovement>();
+        playerLight = GetComponent<PlayerLight>();
     }
 
     private void Update()
@@ -33,9 +44,14 @@ public class PlayerAttack : MonoBehaviour
             attackCooldownTimer -= Time.deltaTime;
         }
 
-        if (Input.GetKeyDown(KeyCode.Mouse0) && CanAttack())
+        if (Input.GetMouseButtonDown(0) && CanAttack())
         {
-            Attack();
+            NormalAttack();
+        }
+
+        if (Input.GetMouseButtonDown(1) && CanAttack())
+        {
+            LightAttack();
         }
     }
 
@@ -50,19 +66,44 @@ public class PlayerAttack : MonoBehaviour
         return true;
     }
 
-    private void Attack()
+    private void NormalAttack()
     {
         IsAttacking = true;
-        attackCooldownTimer = attackCooldown;
+        attackCooldownTimer = normalAttackCooldown;
 
         if (animator != null)
         {
             animator.SetTrigger("Attack");
         }
 
+        DealDamage(normalAttackDamage, normalAttackRange);
+
+        Invoke(nameof(ResetAttackState), 0.15f);
+    }
+
+    private void LightAttack()
+    {
+        if (playerLight != null && !playerLight.TryUseLight(lightAttackCost))
+            return;
+
+        IsAttacking = true;
+        attackCooldownTimer = lightAttackCooldown;
+
+        if (animator != null)
+        {
+            animator.SetTrigger("LightAttack");
+        }
+
+        DealDamage(lightAttackDamage, lightAttackRange);
+
+        Invoke(nameof(ResetAttackState), 0.2f);
+    }
+
+    private void DealDamage(int damage, float range)
+    {
         Collider2D[] hitEnemies = Physics2D.OverlapCircleAll(
             attackPoint.position,
-            attackRange,
+            range,
             enemyLayer
         );
 
@@ -72,11 +113,9 @@ public class PlayerAttack : MonoBehaviour
 
             if (enemyHealth != null)
             {
-                enemyHealth.TakeDamage(attackDamage);
+                enemyHealth.TakeDamage(damage);
             }
         }
-
-        Invoke(nameof(ResetAttackState), 0.15f);
     }
 
     private void ResetAttackState()
@@ -90,6 +129,9 @@ public class PlayerAttack : MonoBehaviour
             return;
 
         Gizmos.color = Color.red;
-        Gizmos.DrawWireSphere(attackPoint.position, attackRange);
+        Gizmos.DrawWireSphere(attackPoint.position, normalAttackRange);
+
+        Gizmos.color = Color.yellow;
+        Gizmos.DrawWireSphere(attackPoint.position, lightAttackRange);
     }
 }
