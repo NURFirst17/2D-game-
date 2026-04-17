@@ -13,7 +13,7 @@ TagManager:
   - UI
   - Enemy
   - Interactable
-  - 
+  - Platform
   - 
   - 
   - 
@@ -49,6 +49,12 @@ TagManager:
     locked: 0
   - name: Particles
     uniqueID: 1766279833
+    locked: 0
+  - name: Environment
+    uniqueID: 3907248955
+    locked: 0
+  - name: Character
+    uniqueID: 2440381011
     locked: 0
   m_RenderingLayers:
   - Default
