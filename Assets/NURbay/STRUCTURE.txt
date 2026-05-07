@@ -1,0 +1,45 @@
+ROOT
+|- NURbay       -> main game content
+|- ThirdParty   -> external asset packs and imported source content
+|- Settings     -> render pipeline and Unity template assets
+|- Tools        -> editor-only helpers and utilities
+\- _Recovery    -> Unity recovery files, not gameplay content
+
+NURbay
+|- Animations
+|  |- Effects
+|  \- Player
+|- Art
+|  \- Characters
+|     |- Enemy
+|     |  \- Orc
+|     \- Player
+|        \- Soldier
+|- Audio
+|  \- Music
+|- Configs
+|- Fonts
+|- Materials
+|- Models
+|- Prefabs
+|- Resources
+|- Scenes
+|- Sprites
+\- Scripts
+   |- Develop
+   |  \- Bootstrup
+   \- Gameplay
+      |- Combat
+      |- Effects
+      |- Enemy
+      |- Environment
+      |- Health
+      |- Interaction
+      |- Platform
+      \- Player
+
+RULES
+1. All game-specific code, scenes, prefabs, configs and content go only into Assets/NURbay.
+2. Imported packs must stay in Assets/ThirdParty and should not be mixed into NURbay directly.
+3. Animations folder stores .anim and .controller assets. Source PNG sprite sheets belong in Art or Sprites.
+4. Temporary recovery files stay in Assets/_Recovery and should not be referenced by gameplay scenes.
