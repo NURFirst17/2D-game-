@@ -1,8 +1,8 @@
-using UnityEngine;
-
 public static class GameEntryPoint
 {
-    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
+    /*
+    Bootstrap startup is disabled because the project now starts from MainMenu
+    and loads levels directly from UI/buttons.
     private static void Initialize()
     {
         if (Object.FindFirstObjectByType<Bootstrup>() != null)
@@ -14,4 +14,5 @@ public static class GameEntryPoint
         bootstrapObject.AddComponent<Bootstrup>();
         Object.DontDestroyOnLoad(bootstrapObject);
     }
+    */
 }

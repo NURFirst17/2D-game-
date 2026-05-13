@@ -62,7 +62,6 @@ public sealed class PlayerDeathRestart : MonoBehaviour
             yield break;
         }
 
-        var activeScene = SceneManager.GetActiveScene();
-        SceneManager.LoadScene(activeScene.name);
+        SceneTransition.ReloadCurrentScene();
     }
 }

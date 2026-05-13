@@ -6,17 +6,20 @@ EditorBuildSettings:
   serializedVersion: 2
   m_Scenes:
   - enabled: 1
-    path: Assets/NURbay/Scenes/Bootstrup.unity
-    guid: 3347f25f04c5faf409074dee8e6ca1cd
-  - enabled: 1
-    path: Assets/NURbay/Scenes/Gameplay.unity
-    guid: 3567395b6029a404d8f7551772389653
+    path: Assets/NURbay/Scenes/MainMenu.unity
+    guid: 52a8fc9febf29cd44be647f11c6ac9f6
   - enabled: 1
     path: Assets/NURbay/Scenes/Level_01.unity
     guid: c2855cebb0318204b8ac2e6d76bb2830
   - enabled: 1
     path: Assets/NURbay/Scenes/Level_02.unity
     guid: e1b29bbf629501e49bd10ce367815a31
+  - enabled: 0
+    path: Assets/NURbay/Scenes/Bootstrup.unity
+    guid: 3347f25f04c5faf409074dee8e6ca1cd
+  - enabled: 0
+    path: Assets/NURbay/Scenes/Gameplay.unity
+    guid: 3567395b6029a404d8f7551772389653
   m_configObjects:
     com.unity.input.settings.actions: {fileID: -944628639613478452, guid: 2bcd2660ca9b64942af0de543d8d7100, type: 3}
   m_UseUCBPForAssetBundles: 0

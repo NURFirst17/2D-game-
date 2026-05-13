@@ -1,6 +1,4 @@
 using UnityEngine;
-using UnityEngine.SceneManagement;
-
 [RequireComponent(typeof(Collider2D))]
 public sealed class DeathZone : MonoBehaviour
 {
@@ -34,7 +32,6 @@ public sealed class DeathZone : MonoBehaviour
             return;
         }
 
-        var activeScene = SceneManager.GetActiveScene();
-        SceneManager.LoadScene(activeScene.name);
+        SceneTransition.ReloadCurrentScene();
     }
 }

@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 [RequireComponent(typeof(Collider2D))]
 public class LevelCompleteTrigger : MonoBehaviour
@@ -26,6 +27,11 @@ public class LevelCompleteTrigger : MonoBehaviour
 
         if (sceneSwitcher == null)
         {
+            if (loadNextLevelAutomatically)
+            {
+                LoadNextSceneDirectly();
+            }
+
             return;
         }
 
@@ -37,7 +43,20 @@ public class LevelCompleteTrigger : MonoBehaviour
 
         if (ServiceLocator.TryResolve<ILevelProgressionService>(out var levelProgressionService))
         {
-            levelProgressionService.MarkLevelCompleted(UnityEngine.SceneManagement.SceneManager.GetActiveScene().name);
+            levelProgressionService.MarkLevelCompleted(SceneManager.GetActiveScene().name);
         }
+    }
+
+    private static void LoadNextSceneDirectly()
+    {
+        var currentScene = SceneManager.GetActiveScene();
+        var nextSceneIndex = currentScene.buildIndex + 1;
+
+        if (nextSceneIndex >= SceneManager.sceneCountInBuildSettings)
+        {
+            return;
+        }
+
+        SceneTransition.LoadScene(nextSceneIndex);
     }
 }

@@ -14,6 +14,7 @@ public class LevelSelectButton : MonoBehaviour
         var sceneSwitcher = Object.FindFirstObjectByType<SceneSwitcher>();
         if (sceneSwitcher == null)
         {
+            SceneTransition.LoadScene(levelName);
             return;
         }
 

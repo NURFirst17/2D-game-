@@ -3,7 +3,7 @@ using UnityEngine.SceneManagement;
 
 public class Bootstrup : MonoBehaviour
 {
-    [SerializeField] private string initialSceneName = "Gameplay";
+    [SerializeField] private string initialSceneName = "MainMenu";
 
     private SceneSwitcher _sceneSwitcher;
 

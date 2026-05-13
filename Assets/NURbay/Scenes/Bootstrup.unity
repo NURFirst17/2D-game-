@@ -148,7 +148,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 666bc2b589e9c21419da1e79387612b3, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Bootstrup
-  initialSceneName: Gameplay
+  initialSceneName: MainMenu
 --- !u!4 &921015004
 Transform:
   m_ObjectHideFlags: 0
