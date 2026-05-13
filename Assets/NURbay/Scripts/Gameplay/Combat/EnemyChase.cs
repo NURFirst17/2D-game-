@@ -14,6 +14,9 @@ public class EnemyChase : MonoBehaviour
     [SerializeField] private float chaseDistance = 8f;
     [SerializeField] private float stopDistance = 1.2f;
     [SerializeField] private bool requireFacingTargetForAggro = true;
+    [SerializeField] private float targetMemoryDuration = 1.25f;
+    [SerializeField] private bool resistPlayerPush = true;
+    [SerializeField] private float pushResistanceMass = 1000f;
 
     [Header("Obstacle Check")]
     [SerializeField] private ObstacleChecker wallChecker;
@@ -25,6 +28,11 @@ public class EnemyChase : MonoBehaviour
     [SerializeField] private DamageDealer damageDealer;
     [SerializeField] private float fallbackDamageWindow = 0.2f;
     [SerializeField] private float attackStateDuration = 0.6f;
+
+    [Header("Contact Damage")]
+    [SerializeField] private bool dealContactDamage = true;
+    [SerializeField] private int contactDamage = 1;
+    [SerializeField] private float contactDamageCooldown = 1f;
 
     [Header("State")]
     [SerializeField] private float hurtLockDuration = 0.45f;
@@ -43,9 +51,12 @@ public class EnemyChase : MonoBehaviour
 
     private EnemyHealth _enemyHealth;
     private EnemyStateMachine _stateMachine;
+    private Rigidbody2D _body;
     private float _moveDirection;
     private float _attackCooldownTimer;
     private float _attackStateTimer;
+    private float _contactDamageTimer;
+    private float _targetMemoryTimer;
     private float _hurtLockTimer;
     private float _patrolPauseTimer;
     private float _spawnX;
@@ -61,7 +72,7 @@ public class EnemyChase : MonoBehaviour
     private bool _initializedFacing;
 
     public bool HasTarget => player != null;
-    public bool CanChaseTarget => HasTarget && IsTargetAlive() && DistanceToPlayer <= chaseDistance && IsTargetVisibleForAggro();
+    public bool CanChaseTarget => HasTarget && IsTargetAlive() && DistanceToPlayer <= chaseDistance && (IsTargetVisibleForAggro() || _targetMemoryTimer > 0f);
     public bool CanAttackTarget => HasTarget && IsTargetAlive() && DistanceToPlayer <= attackRange && IsTargetVisibleForAggro();
     public bool IsAttackInProgress => _attackStateTimer > 0f;
     public bool IsHurtLocked => _hurtLockTimer > 0f;
@@ -75,6 +86,9 @@ public class EnemyChase : MonoBehaviour
         {
             gravity = GetComponent<CharacterGravity2D>();
         }
+
+        _body = GetComponent<Rigidbody2D>();
+        ConfigurePushResistance();
 
         if (animator == null)
         {
@@ -130,6 +144,7 @@ public class EnemyChase : MonoBehaviour
     {
         ResolvePlayer();
         TickTimers();
+        RefreshTargetMemory();
         _stateMachine.Tick();
         UpdateAnimator();
     }
@@ -325,9 +340,30 @@ public class EnemyChase : MonoBehaviour
             _hurtLockTimer -= Time.deltaTime;
         }
 
+        if (_contactDamageTimer > 0f)
+        {
+            _contactDamageTimer -= Time.deltaTime;
+        }
+
+        if (_targetMemoryTimer > 0f)
+        {
+            _targetMemoryTimer -= Time.deltaTime;
+        }
+
         if (_patrolPauseTimer > 0f)
         {
             _patrolPauseTimer -= Time.deltaTime;
+        }
+    }
+
+    private void RefreshTargetMemory()
+    {
+        if (!HasTarget || !IsTargetAlive() || DistanceToPlayer > chaseDistance)
+            return;
+
+        if (IsTargetVisibleForAggro())
+        {
+            _targetMemoryTimer = targetMemoryDuration;
         }
     }
 
@@ -419,6 +455,29 @@ public class EnemyChase : MonoBehaviour
         _attackStateTimer = 0f;
     }
 
+    private void OnCollisionEnter2D(Collision2D collision)
+    {
+        TryDealContactDamage(collision.collider);
+    }
+
+    private void OnCollisionStay2D(Collision2D collision)
+    {
+        TryDealContactDamage(collision.collider);
+    }
+
+    private void TryDealContactDamage(Collider2D other)
+    {
+        if (!dealContactDamage || _isDead || _contactDamageTimer > 0f || !other.CompareTag(playerTag))
+            return;
+
+        var damageable = other.GetComponent<IDamageable>() ?? other.GetComponentInParent<IDamageable>();
+        if (damageable == null || damageable.IsDead)
+            return;
+
+        damageable.TakeDamage(contactDamage);
+        _contactDamageTimer = contactDamageCooldown;
+    }
+
     private void OnDrawGizmosSelected()
     {
         Gizmos.color = Color.yellow;
@@ -476,6 +535,15 @@ public class EnemyChase : MonoBehaviour
         }
 
         _facingRight = transform.localScale.x >= 0f;
+    }
+
+    private void ConfigurePushResistance()
+    {
+        if (!resistPlayerPush || _body == null)
+            return;
+
+        _body.mass = Mathf.Max(_body.mass, pushResistanceMass);
+        _body.constraints |= RigidbodyConstraints2D.FreezeRotation;
     }
 
     private void ApplyFacing()

@@ -54,7 +54,12 @@ public sealed class SceneSwitcher : MonoBehaviour
 
     public void ReloadCurrentScene()
     {
-        LoadScene(SceneManager.GetActiveScene().name);
+        if (IsLoading)
+        {
+            return;
+        }
+
+        _loadingRoutine = StartCoroutine(LoadSceneRoutine(SceneManager.GetActiveScene().name));
     }
 
     public void LoadNextScene()
