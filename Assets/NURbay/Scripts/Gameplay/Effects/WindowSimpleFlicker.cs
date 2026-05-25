@@ -17,4 +17,4 @@ public class WindowSimpleFlicker : MonoBehaviour
         c.a = alpha;
         sr.color = c;
     }
-}
+}  
