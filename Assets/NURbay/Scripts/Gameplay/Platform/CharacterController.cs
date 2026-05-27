@@ -25,6 +25,12 @@ public class CharacterController : MonoBehaviour
     [SerializeField] private float _speed = 7f;
     [SerializeField] private float _deathVisualLocalY = 0f;
 
+    [Header("One Way Platforms")]
+    [SerializeField] private LayerMask _oneWayPlatformMask = 1 << 8;
+    [SerializeField] private float _oneWayStandTolerance = 0.08f;
+    [SerializeField] private float _oneWayPlatformProbePadding = 1.5f;
+    [SerializeField] private float _oneWayPlatformRayStartOffset = 0.08f;
+
     [Header("Input")]
     [SerializeField] private KeyCode _jumpKey = KeyCode.Space;
 
@@ -46,6 +52,11 @@ public class CharacterController : MonoBehaviour
     private float _hurtLockTimer;
     private bool _isDead;
     private Vector3 _initialVisualLocalPosition;
+    private readonly Collider2D[] _oneWayPlatformBuffer = new Collider2D[16];
+    private readonly HashSet<Collider2D> _ignoredOneWayPlatforms = new();
+    private readonly HashSet<Collider2D> _visibleOneWayPlatforms = new();
+    private readonly List<Collider2D> _releasedOneWayPlatforms = new();
+    private readonly RaycastHit2D[] _oneWayPlatformRaycastHits = new RaycastHit2D[8];
 
     public Vector2 Velocity => _rigidbody != null ? _rigidbody.linearVelocity : Vector2.zero;
     public float VerticalVelocity => Velocity.y;
@@ -141,7 +152,18 @@ public class CharacterController : MonoBehaviour
 
     public bool IsGrounded()
     {
-        return _groundChecker != null && _groundChecker.IsTouches();
+        if (_groundChecker == null)
+        {
+            return false;
+        }
+
+        var groundCollider = _groundChecker.GetTouchingCollider();
+        if (groundCollider == null)
+        {
+            return IsStandingOnAnyOneWayPlatform();
+        }
+
+        return !IsOneWayPlatform(groundCollider) || CanStandOnOneWayPlatform(groundCollider);
     }
 
     public void ChangeState(PlayerStateId stateId)
@@ -241,6 +263,7 @@ public class CharacterController : MonoBehaviour
                 break;
         }
 
+        RefreshOneWayPlatformCollisions();
         HandleCeil();
         HandleGravity();
         _rigidbody.linearVelocity = _velocity;
@@ -301,10 +324,220 @@ public class CharacterController : MonoBehaviour
 
     private void HandleCeil()
     {
-        if (_ceilChecker != null && _ceilChecker.IsTouches())
+        if (_ceilChecker == null)
+        {
+            return;
+        }
+
+        var ceilingCollider = _ceilChecker.GetTouchingCollider();
+        if (ceilingCollider != null && !IsOneWayPlatform(ceilingCollider))
         {
             _velocity.y = Mathf.Min(0f, _velocity.y);
         }
+    }
+
+    private void RefreshOneWayPlatformCollisions()
+    {
+        if (_solidColliders == null || _solidColliders.Length == 0)
+        {
+            return;
+        }
+
+        _visibleOneWayPlatforms.Clear();
+
+        foreach (var ownCollider in _solidColliders)
+        {
+            if (ownCollider == null || ownCollider.isTrigger)
+            {
+                continue;
+            }
+
+            var bounds = ownCollider.bounds;
+            var probeSize = new Vector2(bounds.size.x + _oneWayPlatformProbePadding, bounds.size.y + _oneWayPlatformProbePadding);
+            var platformFilter = new ContactFilter2D();
+            platformFilter.SetLayerMask(_oneWayPlatformMask);
+            platformFilter.useTriggers = false;
+            var platformCount = Physics2D.OverlapBox(bounds.center, probeSize, 0f, platformFilter, _oneWayPlatformBuffer);
+
+            for (var i = 0; i < platformCount; i++)
+            {
+                var platformCollider = _oneWayPlatformBuffer[i];
+                if (platformCollider == null || platformCollider.transform.root == transform.root)
+                {
+                    continue;
+                }
+
+                _visibleOneWayPlatforms.Add(platformCollider);
+
+                var shouldIgnore = ShouldIgnoreOneWayPlatform(ownCollider, platformCollider);
+                Physics2D.IgnoreCollision(ownCollider, platformCollider, shouldIgnore);
+
+                if (shouldIgnore)
+                {
+                    _ignoredOneWayPlatforms.Add(platformCollider);
+                }
+                else
+                {
+                    _ignoredOneWayPlatforms.Remove(platformCollider);
+                }
+            }
+        }
+
+        ReleaseHiddenOneWayPlatforms();
+    }
+
+    private void ReleaseHiddenOneWayPlatforms()
+    {
+        if (_ignoredOneWayPlatforms.Count == 0)
+        {
+            return;
+        }
+
+        _releasedOneWayPlatforms.Clear();
+        foreach (var platformCollider in _ignoredOneWayPlatforms)
+        {
+            if (platformCollider == null || _visibleOneWayPlatforms.Contains(platformCollider))
+            {
+                continue;
+            }
+
+            SetIgnoredForAllSolidColliders(platformCollider, false);
+            _releasedOneWayPlatforms.Add(platformCollider);
+        }
+
+        foreach (var platformCollider in _releasedOneWayPlatforms)
+        {
+            _ignoredOneWayPlatforms.Remove(platformCollider);
+        }
+
+        _releasedOneWayPlatforms.Clear();
+    }
+
+    private void SetIgnoredForAllSolidColliders(Collider2D platformCollider, bool ignored)
+    {
+        foreach (var ownCollider in _solidColliders)
+        {
+            if (ownCollider != null && !ownCollider.isTrigger && platformCollider != null)
+            {
+                Physics2D.IgnoreCollision(ownCollider, platformCollider, ignored);
+            }
+        }
+    }
+
+    private bool ShouldIgnoreOneWayPlatform(Collider2D ownCollider, Collider2D platformCollider)
+    {
+        return _velocity.y > 0f || !CanStandOnOneWayPlatform(ownCollider, platformCollider);
+    }
+
+    private bool CanStandOnOneWayPlatform(Collider2D platformCollider)
+    {
+        if (_solidColliders == null)
+        {
+            return false;
+        }
+
+        foreach (var ownCollider in _solidColliders)
+        {
+            if (CanStandOnOneWayPlatform(ownCollider, platformCollider))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private bool CanStandOnOneWayPlatform(Collider2D ownCollider, Collider2D platformCollider)
+    {
+        if (platformCollider == null || _velocity.y > 0.01f)
+        {
+            return false;
+        }
+
+        if (ownCollider == null || ownCollider.isTrigger)
+        {
+            return false;
+        }
+
+        var bounds = ownCollider.bounds;
+        var rayDistance = _oneWayStandTolerance + _oneWayPlatformRayStartOffset + Mathf.Max(0.05f, -_velocity.y * Time.fixedDeltaTime);
+        var leftX = bounds.min.x + Mathf.Min(0.05f, bounds.extents.x);
+        var rightX = bounds.max.x - Mathf.Min(0.05f, bounds.extents.x);
+        var centerX = bounds.center.x;
+        var startY = bounds.min.y + _oneWayPlatformRayStartOffset;
+
+        return IsPlatformBelowFoot(new Vector2(leftX, startY), rayDistance, platformCollider) ||
+               IsPlatformBelowFoot(new Vector2(centerX, startY), rayDistance, platformCollider) ||
+               IsPlatformBelowFoot(new Vector2(rightX, startY), rayDistance, platformCollider);
+    }
+
+    private bool IsStandingOnAnyOneWayPlatform()
+    {
+        if (_solidColliders == null || _velocity.y > 0.01f)
+        {
+            return false;
+        }
+
+        var platformFilter = new ContactFilter2D();
+        platformFilter.SetLayerMask(_oneWayPlatformMask);
+        platformFilter.useTriggers = false;
+
+        foreach (var ownCollider in _solidColliders)
+        {
+            if (ownCollider == null || ownCollider.isTrigger)
+            {
+                continue;
+            }
+
+            var bounds = ownCollider.bounds;
+            var rayDistance = _oneWayStandTolerance + _oneWayPlatformRayStartOffset + Mathf.Max(0.05f, -_velocity.y * Time.fixedDeltaTime);
+            var origin = new Vector2(bounds.center.x, bounds.min.y + _oneWayPlatformRayStartOffset);
+            var hitCount = Physics2D.Raycast(origin, Vector2.down, platformFilter, _oneWayPlatformRaycastHits, rayDistance);
+            for (var i = 0; i < hitCount; i++)
+            {
+                var hit = _oneWayPlatformRaycastHits[i];
+                if (hit.collider != null && hit.normal.y > 0.5f)
+                {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    private bool IsPlatformBelowFoot(Vector2 origin, float rayDistance, Collider2D platformCollider)
+    {
+        var platformFilter = new ContactFilter2D();
+        platformFilter.SetLayerMask(_oneWayPlatformMask);
+        platformFilter.useTriggers = false;
+
+        var hitCount = Physics2D.Raycast(origin, Vector2.down, platformFilter, _oneWayPlatformRaycastHits, rayDistance);
+        for (var i = 0; i < hitCount; i++)
+        {
+            var hit = _oneWayPlatformRaycastHits[i];
+            if (hit.collider == null || hit.normal.y <= 0.5f)
+            {
+                continue;
+            }
+
+            if (hit.collider == platformCollider || hit.collider.transform == platformCollider.transform)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private bool IsOneWayPlatform(Collider2D targetCollider)
+    {
+        if (targetCollider == null)
+        {
+            return false;
+        }
+
+        return (_oneWayPlatformMask.value & (1 << targetCollider.gameObject.layer)) != 0;
     }
 
     private void UpdateRotation(HorizontalControlMode controlMode)

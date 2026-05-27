@@ -12,20 +12,30 @@ public class ObstacleChecker : MonoBehaviour
     
     public bool IsTouches()
     {
+        return GetTouchingCollider() != null;
+    }
+
+    public Collider2D GetTouchingCollider()
+    {
         if (_collider == null)
         {
-            return false;
+            return null;
         }
 
         var direction = _direction.sqrMagnitude > 0f ? _direction.normalized : Vector2.down;
-        return IsTouchesAt((Vector2)transform.position, direction);
+        return GetTouchingColliderAt((Vector2)transform.position, direction);
     }
 
     public bool IsTouchesAt(Vector2 worldPosition, Vector2 direction)
     {
+        return GetTouchingColliderAt(worldPosition, direction) != null;
+    }
+
+    public Collider2D GetTouchingColliderAt(Vector2 worldPosition, Vector2 direction)
+    {
         if (_collider == null)
         {
-            return false;
+            return null;
         }
 
         var bounds = _collider.bounds;
@@ -33,7 +43,7 @@ public class ObstacleChecker : MonoBehaviour
         var checkCenter = worldPosition + normalizedDirection * _distanceToCheck;
         var checkSize = GetCheckSize(bounds.size, normalizedDirection);
 
-        return Physics2D.OverlapBox(checkCenter, checkSize, 0f, _mask) != null;
+        return Physics2D.OverlapBox(checkCenter, checkSize, 0f, _mask);
     }
 
     private static Vector2 GetCheckSize(Vector2 colliderSize, Vector2 direction)
