@@ -53,7 +53,7 @@ public class ObstacleChecker : MonoBehaviour
             return new Vector2(Mathf.Max(MinCheckSize, colliderSize.x * 0.75f), Mathf.Max(MinCheckSize, colliderSize.y * 0.08f));
         }
 
-        return new Vector2(Mathf.Max(MinCheckSize, colliderSize.x * 0.08f), Mathf.Max(MinCheckSize, colliderSize.y * 0.75f));
+        return new Vector2(Mathf.Max(MinCheckSize, colliderSize.x * 0.08f), Mathf.Max(MinCheckSize, colliderSize.y * 0.35f));
     }
 
     public void SetDirection(Vector2 direction)
