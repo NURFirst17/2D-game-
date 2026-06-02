@@ -1,7 +1,13 @@
 using UnityEngine;
 
-public class PlayerLight : MonoBehaviour
+public class PlayerLight : MonoBehaviour, ICheckpointStateParticipant
 {
+    [System.Serializable]
+    private sealed class CheckpointState
+    {
+        public float CurrentLight;
+    }
+
     [Header("Light Settings")]
     [SerializeField] private float maxLight = 100f;
     [SerializeField] private float currentLight = 100f;
@@ -56,5 +62,16 @@ public class PlayerLight : MonoBehaviour
     public void SetLight(float amount)
     {
         currentLight = Mathf.Clamp(amount, 0f, maxLight);
+    }
+
+    public string CaptureCheckpointState()
+    {
+        return JsonUtility.ToJson(new CheckpointState { CurrentLight = currentLight });
+    }
+
+    public void RestoreCheckpointState(string state)
+    {
+        var checkpointState = JsonUtility.FromJson<CheckpointState>(state);
+        SetLight(checkpointState.CurrentLight);
     }
 }

@@ -1,7 +1,14 @@
 using UnityEngine;
 
-public abstract class EntityHealth : MonoBehaviour, IDamageable
+public abstract class EntityHealth : MonoBehaviour, IDamageable, ICheckpointStateParticipant
 {
+    [System.Serializable]
+    private sealed class CheckpointState
+    {
+        public int CurrentHealth;
+        public bool IsDead;
+    }
+
     [Header("Health")]
     [SerializeField] private int maxHealth = 3;
 
@@ -44,6 +51,22 @@ public abstract class EntityHealth : MonoBehaviour, IDamageable
         }
 
         CurrentHealth = Mathf.Min(CurrentHealth + amount, maxHealth);
+    }
+
+    public string CaptureCheckpointState()
+    {
+        return JsonUtility.ToJson(new CheckpointState
+        {
+            CurrentHealth = CurrentHealth,
+            IsDead = IsDead
+        });
+    }
+
+    public void RestoreCheckpointState(string state)
+    {
+        var checkpointState = JsonUtility.FromJson<CheckpointState>(state);
+        CurrentHealth = Mathf.Clamp(checkpointState.CurrentHealth, 0, maxHealth);
+        IsDead = checkpointState.IsDead;
     }
 
     protected abstract void OnDamageTaken();

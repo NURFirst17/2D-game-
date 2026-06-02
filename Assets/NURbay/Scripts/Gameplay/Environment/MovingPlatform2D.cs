@@ -1,8 +1,14 @@
 using UnityEngine;
 
 [RequireComponent(typeof(Rigidbody2D))]
-public class MovingPlatform2D : MonoBehaviour
+public class MovingPlatform2D : MonoBehaviour, ICheckpointStateParticipant
 {
+    [System.Serializable]
+    private sealed class CheckpointState
+    {
+        public bool IsMovingToPointA;
+    }
+
     public enum MovementAxis
     {
         Horizontal,
@@ -63,5 +69,16 @@ public class MovingPlatform2D : MonoBehaviour
         Gizmos.DrawLine(startPosition, startPosition + offset);
         Gizmos.DrawWireCube(startPosition, Vector3.one * 0.4f);
         Gizmos.DrawWireCube(startPosition + offset, Vector3.one * 0.4f);
+    }
+
+    public string CaptureCheckpointState()
+    {
+        return JsonUtility.ToJson(new CheckpointState { IsMovingToPointA = _currentTarget == _pointA });
+    }
+
+    public void RestoreCheckpointState(string state)
+    {
+        var checkpointState = JsonUtility.FromJson<CheckpointState>(state);
+        _currentTarget = checkpointState.IsMovingToPointA ? _pointA : _pointB;
     }
 }

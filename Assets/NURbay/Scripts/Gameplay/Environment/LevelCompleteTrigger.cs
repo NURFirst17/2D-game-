@@ -20,6 +20,11 @@ public class LevelCompleteTrigger : MonoBehaviour
             return;
         }
 
+        if (GameCompleteMenuController.TryShowForCurrentScene())
+        {
+            return;
+        }
+
         if (!ServiceLocator.TryResolve<SceneSwitcher>(out var sceneSwitcher))
         {
             sceneSwitcher = Object.FindFirstObjectByType<SceneSwitcher>();
