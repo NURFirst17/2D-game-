@@ -1,5 +1,6 @@
 using System.Collections;
 using UnityEngine;
+using Unity.Cinemachine;
 
 public class GolemBossAI : MonoBehaviour
 {
@@ -40,6 +41,18 @@ public class GolemBossAI : MonoBehaviour
     [SerializeField] private float stopDistance = 6f;
     [SerializeField] private float verticalOffset = 1f;
 
+    [Header("Phase Two")]
+    [SerializeField] private float phaseTwoTransitionTime = 1.5f;
+    [SerializeField] private float phaseTwoMinCooldown = 2f;
+    [SerializeField] private float phaseTwoMaxCooldown = 3f;
+
+    [Header("Phase Two Cutscene")]
+    [SerializeField] private CinemachineCamera followCamera;
+    [SerializeField] private Transform cameraFocusPoint;
+    [SerializeField] private Transform phaseTwoPoint;
+    [SerializeField] private float phaseTwoMoveSpeed = 4f;
+    [SerializeField] private float cameraReturnTime = 0.8f;
+
     [Header("Timing")]
     [SerializeField] private float meleeEndDelay = 0.6f;
     [SerializeField] private float shootEndDelay = 0.6f;
@@ -49,6 +62,8 @@ public class GolemBossAI : MonoBehaviour
     private bool isAttacking;
     private float nextAttackTime;
     private bool facingRight = true;
+    private bool isPhaseTwo;
+    private bool isTransitioning;
 
     private void Awake()
     {
@@ -64,7 +79,7 @@ public class GolemBossAI : MonoBehaviour
         FlipToPlayer();
         MoveToPlayer();
 
-        if (isAttacking)
+        if (isAttacking || isTransitioning)
             return;
 
         if (Time.time < nextAttackTime)
@@ -76,14 +91,73 @@ public class GolemBossAI : MonoBehaviour
         {
             StartMeleeAttack();
         }
-        else if (distanceToPlayer >= minLaserRange && distanceToPlayer <= laserRange)
+        else if (isPhaseTwo && distanceToPlayer >= minLaserRange && distanceToPlayer <= laserRange)
         {
             StartLaserAttack();
         }
-        else if (distanceToPlayer >= minShootRange && distanceToPlayer <= shootRange)
+        else if (!isPhaseTwo && distanceToPlayer >= minShootRange && distanceToPlayer <= shootRange)
         {
             StartArmShoot();
         }
+    }
+
+    public void StartPhaseTwo()
+    {
+        if (isPhaseTwo || isTransitioning)
+            return;
+
+        StartCoroutine(PhaseTwoRoutine());
+    }
+
+    private IEnumerator PhaseTwoRoutine()
+    {
+        isTransitioning = true;
+        isAttacking = true;
+
+        if (rb != null)
+            rb.linearVelocity = Vector2.zero;
+
+        Transform previousTarget = null;
+
+        if (followCamera != null)
+        {
+            previousTarget = followCamera.Follow;
+            followCamera.Follow = cameraFocusPoint;
+        }
+
+        if (phaseTwoPoint != null)
+        {
+            while (Vector2.Distance(transform.position, phaseTwoPoint.position) > 0.05f)
+            {
+                transform.position = Vector2.MoveTowards(
+                    transform.position,
+                    phaseTwoPoint.position,
+                    phaseTwoMoveSpeed * Time.deltaTime
+                );
+
+                yield return null;
+            }
+        }
+
+        if (animator != null)
+            animator.SetTrigger("PhaseTwo");
+
+        yield return new WaitForSeconds(phaseTwoTransitionTime);
+
+        isPhaseTwo = true;
+
+        minAttackCooldown = phaseTwoMinCooldown;
+        maxAttackCooldown = phaseTwoMaxCooldown;
+
+        if (followCamera != null)
+            followCamera.Follow = previousTarget;
+
+        yield return new WaitForSeconds(cameraReturnTime);
+
+        isAttacking = false;
+        isTransitioning = false;
+
+        SetNextAttackCooldown();
     }
 
     private void StartMeleeAttack()
@@ -99,20 +173,14 @@ public class GolemBossAI : MonoBehaviour
     {
         yield return new WaitForSeconds(meleeDamageDelay);
 
-        Collider2D hit = Physics2D.OverlapCircle(
-            meleePoint.position,
-            meleeRadius,
-            playerLayer
-        );
+        Collider2D hit = Physics2D.OverlapCircle(meleePoint.position, meleeRadius, playerLayer);
 
         if (hit != null)
         {
-            IDamageable damageable = hit.GetComponent<IDamageable>();
+            IDamageable damageable = hit.GetComponentInParent<IDamageable>();
 
             if (damageable != null)
-            {
                 damageable.TakeDamage(meleeDamage);
-            }
         }
 
         yield return new WaitForSeconds(meleeEndDelay);
@@ -147,9 +215,7 @@ public class GolemBossAI : MonoBehaviour
             ArmProjectile armProjectile = projectile.GetComponent<ArmProjectile>();
 
             if (armProjectile != null)
-            {
-                armProjectile.Init(direction, projectileSpeed);
-            }
+                armProjectile.Init(direction, projectileSpeed, gameObject);
         }
 
         yield return new WaitForSeconds(shootEndDelay);
@@ -159,8 +225,6 @@ public class GolemBossAI : MonoBehaviour
 
     private void StartLaserAttack()
     {
-        Debug.Log("Laser attack started");
-
         isAttacking = true;
         SetNextAttackCooldown();
 
@@ -172,11 +236,7 @@ public class GolemBossAI : MonoBehaviour
     {
         if (laserPoint != null && laserChargeEffectPrefab != null)
         {
-            Instantiate(
-                laserChargeEffectPrefab,
-                laserPoint.position,
-                Quaternion.identity
-            );
+            Instantiate(laserChargeEffectPrefab, laserPoint.position, Quaternion.identity);
         }
 
         yield return new WaitForSeconds(laserDelay);
@@ -186,11 +246,16 @@ public class GolemBossAI : MonoBehaviour
             Vector2 direction = (player.position - laserPoint.position).normalized;
             float angle = Mathf.Atan2(direction.y, direction.x) * Mathf.Rad2Deg;
 
-            Instantiate(
+            GameObject laser = Instantiate(
                 laserPrefab,
                 laserPoint.position,
                 Quaternion.Euler(0f, 0f, angle)
             );
+
+            LaserDamage laserDamage = laser.GetComponent<LaserDamage>();
+
+            if (laserDamage != null)
+                laserDamage.SetOwner(gameObject);
         }
 
         yield return new WaitForSeconds(laserEndDelay);
@@ -206,13 +271,9 @@ public class GolemBossAI : MonoBehaviour
     private void FlipToPlayer()
     {
         if (player.position.x > transform.position.x && !facingRight)
-        {
             Flip();
-        }
         else if (player.position.x < transform.position.x && facingRight)
-        {
             Flip();
-        }
     }
 
     private void Flip()
@@ -226,7 +287,7 @@ public class GolemBossAI : MonoBehaviour
 
     private void MoveToPlayer()
     {
-        if (player == null || isAttacking)
+        if (player == null || isAttacking || isTransitioning)
         {
             rb.linearVelocity = Vector2.zero;
             return;

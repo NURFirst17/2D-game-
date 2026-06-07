@@ -7,11 +7,14 @@ public class ArmProjectile : MonoBehaviour
     [SerializeField] private float lifeTime = 4f;
 
     private Vector2 direction;
+    private GameObject owner;
 
-    public void Init(Vector2 shootDirection, float projectileSpeed)
+    public void Init(Vector2 shootDirection, float projectileSpeed, GameObject projectileOwner)
     {
         direction = shootDirection.normalized;
         speed = projectileSpeed;
+        owner = projectileOwner;
+
         Destroy(gameObject, lifeTime);
     }
 
@@ -22,13 +25,18 @@ public class ArmProjectile : MonoBehaviour
 
     private void OnTriggerEnter2D(Collider2D collision)
     {
-        IDamageable damageable = collision.GetComponent<IDamageable>();
+        if (owner != null)
+        {
+            if (collision.gameObject == owner || collision.transform.IsChildOf(owner.transform))
+                return;
+        }
+
+        IDamageable damageable = collision.GetComponentInParent<IDamageable>();
 
         if (damageable != null)
         {
             damageable.TakeDamage(damage);
             Destroy(gameObject);
-            return;
         }
     }
 }

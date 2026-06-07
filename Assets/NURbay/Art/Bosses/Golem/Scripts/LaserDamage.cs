@@ -7,6 +7,12 @@ public class LaserDamage : MonoBehaviour
     [SerializeField] private float damageCooldown = 0.5f;
 
     private float lastDamageTime;
+    private GameObject owner;
+
+    public void SetOwner(GameObject laserOwner)
+    {
+        owner = laserOwner;
+    }
 
     private void Start()
     {
@@ -15,7 +21,13 @@ public class LaserDamage : MonoBehaviour
 
     private void OnTriggerStay2D(Collider2D collision)
     {
-        IDamageable damageable = collision.GetComponent<IDamageable>();
+        if (owner != null)
+        {
+            if (collision.gameObject == owner || collision.transform.IsChildOf(owner.transform))
+                return;
+        }
+
+        IDamageable damageable = collision.GetComponentInParent<IDamageable>();
 
         if (damageable == null)
             return;
