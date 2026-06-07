@@ -50,3 +50,4 @@ public sealed class HazardDamageZone : MonoBehaviour
         _damageTimer = damageCooldown;
     }
 }
+    
